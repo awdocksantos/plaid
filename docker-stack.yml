@@ -1,0 +1,146 @@
+version: '3.5'
+
+services:
+  code:
+    image: denisnabatov/symfony-skeleton-code:latest
+    volumes:
+      - appdir:/usr/src/app:rw
+    networks:
+      - webnet
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      update_config:
+        parallelism: 0
+        delay: 0s
+      restart_policy:
+        condition: none
+
+  nginx:
+    image: nginx:1.17-alpine
+    volumes:
+      - appdir:/usr/src/app:rw
+    networks:
+      - webnet
+    entrypoint: /usr/src/app/docker/nginx/entrypoint.sh
+    ports:
+      - 8085:8085
+    environment:
+      NGINX_SERVER_NAME: _
+      NGINX_PORT: 8085
+      NGINX_ROOT: /usr/src/app/public
+      PHP_HOST: php
+      PHP_PORT: 9000
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 0
+        delay: 10s
+      restart_policy:
+        condition: any
+
+  php:
+    image: denisnabatov/symfony-skeleton-php:latest
+    volumes:
+      - appdir:/usr/src/app:rw
+    networks:
+      - webnet
+    deploy:
+      mode: replicated
+      replicas: 1
+      update_config:
+        parallelism: 0
+        delay: 10s
+      restart_policy:
+        condition: any
+
+  postgress:
+    image: postgres:12.1-alpine
+    volumes:
+      - dbdata:/var/lib/postgresql/data:rw
+    networks:
+      - webnet
+    environment:
+      POSTGRES_DB: symfony
+      POSTGRES_HOST: postgres
+      POSTGRES_PASSWORD: zaibce
+      POSTGRES_USER: symfony
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      update_config:
+        parallelism: 0
+        delay: 0s
+      restart_policy:
+        condition: any
+
+  adminer:
+    image: adminer:latest
+    environment:
+      ADMINER_DESIGN: nette
+    ports:
+      - 8084:8080
+    networks:
+      - webnet
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      update_config:
+        parallelism: 0
+        delay: 0s
+      restart_policy:
+        condition: any
+
+  redis:
+    image: redis:5.0.7-alpine
+    volumes:
+      - redisdata:/data:rw
+    networks:
+      - webnet
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      update_config:
+        parallelism: 0
+        delay: 0s
+      restart_policy:
+        condition: any
+
+  exim:
+    image: denisnabatov/symfony-skeleton-exim:latest
+    volumes:
+      - eximdata:/var/spool/exim4:rw
+    networks:
+      - webnet
+    environment:
+      ALLOWED_HOSTS: php ; 10.0.0.0/8 ; 172.16.0.0/12 ; 192.168.0.0/16
+      PRIMARY_HOST: mail.local
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      update_config:
+        parallelism: 0
+        delay: 0s
+      restart_policy:
+        condition: any
+
+volumes:
+  appdir:
+  dbdata:
+  eximdata:
+  redisdata:
+
+networks:
+  webnet:
+
